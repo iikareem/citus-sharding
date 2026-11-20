@@ -1,0 +1,22 @@
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Docker / local data
+*.log
+data/
+pgdata/
+.docker-data/
+
+# Python / tooling (if we add scripts later)
+__pycache__/
+.venv/
+venv/
+*.pyc
