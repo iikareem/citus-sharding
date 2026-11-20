@@ -77,6 +77,68 @@ This keeps joins local when you always scope by tenant.
 - Complex CDC or multi-region setups
 - Full app backend — SQL + scripts are enough to learn the model
 
-## Next
+## Quick start (step 01)
 
-Scaffold Docker Compose, init SQL, and short exercise scripts that follow the lab path above.
+```bash
+cp .env.example .env          # optional; defaults work for local lab
+docker compose up -d
+docker compose logs register-workers   # should show both workers registered
+```
+
+> Host port defaults to **5433** so it does not clash with another local Postgres on 5432.
+
+Connect to the **coordinator** only:
+
+```bash
+docker compose exec coordinator psql -U postgres -d postgres
+```
+
+**DataGrip:** host `localhost`, port `5433`, user `postgres`, password `citus`, database `postgres`.
+
+Then check the cluster:
+
+```sql
+SELECT * FROM citus_get_active_worker_nodes();
+```
+
+Stop / reset:
+
+```bash
+docker compose down          # keep data volumes if any were added later
+docker compose down -v       # full reset
+```
+
+### Cluster layout
+
+| Service | Role | Reachable from host |
+|---------|------|---------------------|
+| `coordinator` | SQL entrypoint, metadata | `localhost:5433` (host) → `5432` inside container |
+| `worker1` | shard storage | internal (`citus` bridge network) |
+| `worker2` | shard storage | internal (`citus` bridge network) |
+| `register-workers` | one-shot init | exits after registering nodes |
+
+## Step 02–03: schema, seed, distribute
+
+In DataGrip (connected to `localhost:5433`), run in order:
+
+1. `sql/02_schema.sql` — create tables (coordinator only)
+2. `sql/02_seed.sql` — insert sample tenants/orders
+3. `sql/03_distribute.sql` — reference + distribute by `tenant_id`
+
+If distribute fails on PK/UNIQUE, run `sql/03a_fix_pkeys.sql` then `03_distribute.sql` again.
+(Citus requires primary keys on distributed tables to include `tenant_id`.)
+
+Or from the terminal:
+
+```bash
+docker compose exec -T coordinator psql -U postgres -d postgres < sql/02_schema.sql
+docker compose exec -T coordinator psql -U postgres -d postgres < sql/02_seed.sql
+docker compose exec -T coordinator psql -U postgres -d postgres < sql/03_distribute.sql
+```
+
+Quick checks after seed (before or after distribute):
+
+```sql
+SELECT * FROM tenants;
+SELECT tenant_id, COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;
+```

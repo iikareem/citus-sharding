@@ -1,0 +1,77 @@
+# Local Citus lab: 1 coordinator + 2 workers on a bridge network.
+# Connect only to the coordinator: localhost:5432
+
+services:
+  coordinator:
+    image: citusdata/citus:14.2.0
+    container_name: citus_coordinator
+    ports:
+      - "${COORDINATOR_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-citus}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-citus}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    networks: [citus]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  worker1:
+    image: citusdata/citus:14.2.0
+    container_name: citus_worker1
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-citus}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-citus}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    networks: [citus]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  worker2:
+    image: citusdata/citus:14.2.0
+    container_name: citus_worker2
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-citus}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-citus}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    networks: [citus]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: tell the coordinator about the workers
+  register-workers:
+    image: citusdata/citus:14.2.0
+    container_name: citus_register_workers
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      worker1:
+        condition: service_healthy
+      worker2:
+        condition: service_healthy
+    environment:
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-citus}
+    volumes:
+      - ./scripts/register-workers.sh:/register-workers.sh:ro
+    entrypoint: ["/bin/bash", "/register-workers.sh"]
+    networks: [citus]
+    restart: "no"
+
+networks:
+  citus:
+    driver: bridge
