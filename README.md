@@ -82,7 +82,7 @@ docker compose down -v   # stop and remove volumes (full reset)
 | 01 | Bring up cluster | `docker-compose.yml`, `scripts/register-workers.sh` |
 | 02 | Schema + seed | `sql/02_schema.sql`, `sql/02_seed.sql` |
 | 03 | Reference + distribute | `sql/03_distribute.sql` |
-| 04 | Single-shard / colocated queries | (next) |
+| 04 | Bulk seed + single-shard / colocated queries | `sql/04_bulk_seed.sql` |
 | 05 | Cross-shard / missing shard-key queries | (next) |
 | 06 | Inspect placement and routing | `citus_shards`, placement SQL |
 | 07 | Add a worker and rebalance | (next) |
